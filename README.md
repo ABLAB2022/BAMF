@@ -1,3 +1,3 @@
 # Bayesian Attentional Matrix Factorization
 
-![01](/desc/architecture.png){: width="100%"}
+![01](/desc/architecture.png)
