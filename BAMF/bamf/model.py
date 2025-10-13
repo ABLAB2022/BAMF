@@ -16,6 +16,7 @@ class Module(nn.Module):
         n_items: int,
         n_factors: int,
         user_hist: torch.Tensor,
+        item_hist: torch.Tensor,
         hyper_approx: float=0.1,
         hyper_prior: float=1.0,
         tau: float=4.0,
@@ -49,6 +50,10 @@ class Module(nn.Module):
         self.register_buffer(
             name="user_hist", 
             tensor=user_hist,
+        )
+        self.register_buffer(
+            name="item_hist", 
+            tensor=item_hist,
         )
 
         # generate layers
@@ -87,50 +92,25 @@ class Module(nn.Module):
 
     def rep(self, user_idx, item_idx, stochastic):
         # id embedding
-        user_embed_slice_id, target_embed_slice_id, hist_embed_slice_id, mask = self._embed_slicer(user_idx, item_idx)
+        user_embed_slice_id = self.user_embed(user_idx)
+        item_embed_slice_id = self.item_embed(item_idx)
         
         # history embedding
         kwargs = dict(
-            refer=hist_embed_slice_id, 
-            mask=mask, 
+            user_idx=user_idx, 
+            item_idx=item_idx, 
             stochastic=stochastic,
         )
-        user_embed_slice_hist, kl_u = self.user_hist_embed_generator(
-            **kwargs,
-            query=user_embed_slice_id,
-        )
-        item_embed_slice_hist, kl_i = self.user_hist_embed_generator(
-            **kwargs,
-            query=target_embed_slice_id,
-        )
+        user_embed_slice_hist, kl_u = self.user_hist_embed_generator(**kwargs)
+        item_embed_slice_hist, kl_i = self.user_hist_embed_generator(**kwargs)
 
         # element-wise product & layernorm
         user_embed_slice = self.norm_u(user_embed_slice_hist * user_embed_slice_id)
-        item_embed_slice = self.norm_i(item_embed_slice_hist * target_embed_slice_id)
+        item_embed_slice = self.norm_i(item_embed_slice_hist * item_embed_slice_id)
 
         return user_embed_slice, item_embed_slice, (kl_u + kl_i)/2
 
-    def user_hist_embed_generator(self, query, refer, mask, stochastic):
-        kwargs = dict(
-            Q=query,
-            K=refer,
-            V=refer,
-            mask=mask,
-            stochastic=stochastic,
-        )
-        return self.bam_u(**kwargs)
-
-    def item_hist_embed_generator(self, query, refer, mask, stochastic):
-        kwargs = dict(
-            Q=query,
-            K=refer,
-            V=refer,
-            mask=mask,
-            stochastic=stochastic,
-        )
-        return self.bam_i(**kwargs)
-
-    def _embed_slicer(self, user_idx, item_idx):
+    def user_hist_embed_generator(self, user_idx, item_idx, stochastic):
         kwargs = dict(
             target_hist=self.user_hist, 
             target_idx=user_idx, 
@@ -144,17 +124,39 @@ class Module(nn.Module):
             counterpart_padding_idx=self.n_items,
         )
         mask = self._mask_generator(**kwargs)
+        
+        kwargs = dict(
+            Q=self.user_embed(user_idx),
+            K=self.item_embed(refer_idx),
+            V=self.item_embed(refer_idx),
+            mask=mask,
+            stochastic=stochastic,
+        )
+        return self.bam_u(**kwargs)
 
-        # get embeddings
-        user_embed_slice        = self.user_embed(user_idx)
-        target_embed_slice_raw  = self.item_embed(item_idx)
-        hist_embed_slice_raw    = self.item_embed(refer_idx)        # (B, L, D)
+    def item_hist_embed_generator(self, user_idx, item_idx, mask, stochastic):
+        kwargs = dict(
+            target_hist=self.item_hist, 
+            target_idx=item_idx, 
+            counterpart_padding_idx=self.n_users,
+        )
+        refer_idx = self._hist_idx_slicer(**kwargs)
 
-        # linear transformation
-        target_embed_slice      = self.W_i(target_embed_slice_raw)
-        hist_embed_slice        = self.W_h(hist_embed_slice_raw)   # (B, L, D)
-
-        return user_embed_slice, target_embed_slice, hist_embed_slice, mask
+        kwargs = dict(
+            hist_idx_slice=refer_idx,
+            counterpart_idx=user_idx, 
+            counterpart_padding_idx=self.n_users,
+        )
+        mask = self._mask_generator(**kwargs)
+        
+        kwargs = dict(
+            Q=self.item_embed(item_idx),
+            K=self.user_embed(refer_idx),
+            V=self.user_embed(refer_idx),
+            mask=mask,
+            stochastic=stochastic,
+        )
+        return self.bam_i(**kwargs)
 
     def _mask_generator(self, hist_idx_slice, counterpart_idx, counterpart_padding_idx):
         # mask to current target item from history
@@ -212,17 +214,6 @@ class Module(nn.Module):
         nn.init.normal_(self.item_embed.weight, std=0.01)
 
     def _create_layers(self):
-        self.W_i = nn.Linear(
-            in_features=self.n_factors,
-            out_features=self.n_factors,
-            bias=False,
-        )
-        self.W_h = nn.Linear(
-            in_features=self.n_factors,
-            out_features=self.n_factors,
-            bias=False,
-        )
-
         self.norm_u = nn.LayerNorm(self.n_factors)
         self.norm_i = nn.LayerNorm(self.n_factors)
 

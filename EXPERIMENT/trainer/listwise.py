@@ -16,6 +16,7 @@ class CustomizedTrainer:
         loss_fn_type: LOSS_FN_TYPE_LISTWISE="climf",
         lr: float=1e-4, 
         weight_decay: float=1e-3, 
+        kl_lambda: float=0.5,
     ):
         """
         Listwise Learning Single Epoch Trainer for Latent Factor Model
@@ -41,7 +42,8 @@ class CustomizedTrainer:
         self.loss_fn_type = loss_fn_type
         self.lr = lr
         self.weight_decay = weight_decay
-        
+        self.kl_lambda = kl_lambda
+
         # set up components, loss function, optimizer, etc.
         self._set_up_components()
 
@@ -51,33 +53,39 @@ class CustomizedTrainer:
         val_loader: CustomizedDataLoader, 
         epoch: int,
         n_epochs: int,
+        annealing: int,
     ):
         kwargs = dict(
             dataloader=trn_loader,
             epoch=epoch,
             n_epochs=n_epochs,
+            annealing=annealing,
         )
-        trn_loss, computing_cost = self._epoch_trn_step(**kwargs)
+        trn_nll, trn_kl, computing_cost = self._epoch_trn_step(**kwargs)
 
         kwargs = dict(
             dataloader=val_loader,
             epoch=epoch,
             n_epochs=n_epochs,
         )
-        val_task_loss = self._epoch_val_step(**kwargs)
+        val_nll, val_kl = self._epoch_val_step(**kwargs)
 
-        return trn_loss, val_task_loss, computing_cost
+        return (trn_nll, trn_kl), (val_nll, val_kl), computing_cost
 
     def _epoch_trn_step(
         self,
         dataloader: torch.utils.data.dataloader.DataLoader,
         epoch: int,
         n_epochs: int,
+        annealing: int,
     ):
         self.model.train()
 
-        epoch_loss = 0.0
+        epoch_nll = 0.0
+        epoch_kl = 0.0
         epoch_computing_cost = []
+
+        kl_lambda = min(self.kl_lambda, self.kl_lambda * epoch/annealing)
 
         iter_obj = tqdm(
             iterable=dataloader, 
@@ -97,7 +105,8 @@ class CustomizedTrainer:
 
             # forward pass
             with autocast(self.device.type):
-                batch_loss = self._batch_step(**kwargs)
+                batch_nll, batch_kl = self._batch_step(**kwargs)
+                batch_loss = batch_nll + batch_kl * kl_lambda
 
             # backward pass
             self._run_fn_opt(batch_loss)
@@ -106,21 +115,23 @@ class CustomizedTrainer:
             batch_computing_cost = perf_counter() - t0
 
             # accumulate loss
-            epoch_loss += batch_loss.item()
+            epoch_nll += batch_nll.item()
+            epoch_kl += batch_kl.item()
             epoch_computing_cost.append(batch_computing_cost)
 
-        return epoch_loss / len(dataloader), epoch_computing_cost
+        return epoch_nll / len(dataloader), epoch_kl / len(dataloader), epoch_computing_cost
 
     @torch.no_grad()
-    def _epoch_val_step(        
-        self,
-        dataloader: torch.utils.data.dataloader.DataLoader,
-        epoch: int,
-        n_epochs: int,
+    def _epoch_val_step(
+            self,
+            dataloader: torch.utils.data.dataloader.DataLoader,
+            epoch: int,
+            n_epochs: int,
     ):
         self.model.eval()
 
-        epoch_loss = 0.0
+        epoch_nll = 0.0
+        epoch_kl = 0.0
 
         iter_obj = tqdm(
             iterable=dataloader, 
@@ -137,23 +148,24 @@ class CustomizedTrainer:
 
             # forward pass
             with autocast(self.device.type):
-                batch_loss = self._batch_step(**kwargs)
+                batch_nll, batch_kl = self._batch_step(**kwargs)
 
             # accumulate loss
-            epoch_loss += batch_loss.item()
+            epoch_nll += batch_nll.item()
+            epoch_kl += batch_kl.item()
 
-        return epoch_loss / len(dataloader)
+        return epoch_nll / len(dataloader), epoch_kl / len(dataloader)
 
     def _batch_step(self, user_idx, pos_idx, neg_idx):
-        pos_logit = self.model(user_idx, pos_idx)
+        pos_logit, kl_pos = self.model(user_idx, pos_idx)
         
         user_idx_exp = user_idx.unsqueeze(1).expand_as(neg_idx)
-        neg_logit_flat = self.model(user_idx_exp.reshape(-1), neg_idx.reshape(-1))
+        neg_logit_flat, kl_neg = self.model(user_idx_exp.reshape(-1), neg_idx.reshape(-1))
         neg_logit = neg_logit_flat.view(*neg_idx.shape)
         
-        loss = self.task_fn(pos_logit, neg_logit)
+        loss = self.loss_fn(pos_logit, neg_logit)
         
-        return loss
+        return loss, (kl_pos + kl_neg)/2
 
     def _run_fn_opt(self, loss):
         self.optimizer.zero_grad()
@@ -162,13 +174,13 @@ class CustomizedTrainer:
         self.scaler.update()
 
     def _set_up_components(self):
-        self._init_task_fn()
+        self._init_loss_fn()
         self._init_optimizer()
         self._init_scaler()
 
-    def _init_task_fn(self):
+    def _init_loss_fn(self):
         if self.loss_fn_type=="climf":
-            self.task_fn = listwise.climf
+            self.loss_fn = listwise.climf
         else:
             raise ValueError(f"Invalid loss_fn_type: {self.loss_fn_type}")
 

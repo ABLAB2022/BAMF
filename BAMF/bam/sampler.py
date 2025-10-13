@@ -101,9 +101,9 @@ class WeibullSampler(nn.Module):
         self._set_up_components()
 
     def forward(self, Q, K, mask):
-        approx, psi = self._approx(Q, K)
+        approx, psi = self.approx(Q, K)
         samples = approx.rsample()
-        prior = self._prior(K)
+        prior = self.prior(K)
 
         dist = dict(
             approx=approx,
