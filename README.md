@@ -14,27 +14,31 @@ This study replaces the deterministic attention scores with stochastic attention
 
 ## architecture
 
-the original BAMF applies only the user’s history as reference information in the Bayesian Attention Modules. however, after the conference, additional experimental results showed that using not only the user’s history but also the item’s history improved performance. so, we corrected our model to:
+the original BAMF applies only the user’s history as reference information in the Bayesian Attention Modules:
 
-![01](/desc/architecture.png)
+![01](/desc/origin.png)
 
-### notation
+however, after the conference, additional experimental results showed that using not only the user’s history but also the item’s history improved performance. so, we corrected our model to:
 
-#### idx
+![02](/desc/improved.png)
+
+## notation
+
+### idx
 
 - $u$: target user
 - $i$: target item
 - $v \in R_{i}^{+} \setminus \{u\}$: history users of target item (target user $u$ is excluded)
 - $j \in R_{u}^{+} \setminus \{i\}$: history items of target user (target item $i$ is excluded)
 
-#### vector
+### vector
 
 - $p \in \mathbb{R}^{M \times K}$: user id embedding vector (we define it as global behavior representation)
 - $q \in \mathbb{R}^{N \times K}$: item id embedding vector (we define it as global behavior representation)
 - $c_{u} \in \mathbb{R}^{M \times K}$: user context vector (we define it as local preference representation)
 - $c_{i} \in \mathbb{R}^{N \times K}$: item context vector (we define it as local preference representation)
 
-#### function
+### function
 
 - $\mathrm{bam}(q,k,v)$: bayesian attention module (only single head)
 - $\mathrm{layernorm}(\cdot)$: layer normalization
@@ -46,9 +50,9 @@ the original BAMF applies only the user’s history as reference information in 
 - $h$: linear trainsformation vector
 - $b$: bias term
 
-### modeling
+## modeling
 
-#### user representation
+### user representation
 
 - user id embedding:
 
@@ -68,7 +72,7 @@ $$
 z_{u}=\mathrm{layernorm}(p_{u} \odot c_{u})
 $$
 
-#### item representation
+### item representation
 
 - item id embedding:
 
@@ -88,7 +92,7 @@ $$
 z_{i}=\mathrm{layernorm}(q_{i} \odot c_{i})
 $$
 
-#### agg, matching & predict
+### agg, matching & predict
 
 - general matrix factorization:
 
@@ -108,7 +112,7 @@ $$
 \hat{y}_{u,i}=x_{u,i}
 $$
 
-#### objective function
+### objective function
 
 $$
 \mathcal{L}_{\mathrm{ELBO}}:= \sum_{(u,i)\in\Omega}{\left(\mathrm{NLL} + \sum_{j \in R_{u}^{+} \setminus \{i\}}{\mathrm{KL}^{(u,j)}} + \sum_{v \in R_{i}^{+} \setminus \{u\}}{\mathrm{KL}^{(v,i)}} \right)}
