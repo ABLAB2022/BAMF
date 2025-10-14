@@ -1,9 +1,12 @@
 # Bayesian Attentional Matrix Factorization
 
+- Conference: 2024.11.1.
+
+- [First Author](https://github.com/jayarnim), [Corresponding Author](https://github.com/jaylee07)
 
 ## idea
 
-implicit feedback represents observable user actions rather than direct preference statements. so it inherently suffers from ambiguity as a signal of true user preference. To address this issue, this study reinterprets the ambiguity of implicit feedback signals as a problem of epistemic uncertainty regarding user preferences and proposes a latent factor model that incorporates this uncertainty within a Bayesian framework.
+Implicit feedback represents observable user actions rather than direct preference statements. So it inherently suffers from ambiguity as a signal of true user preference. To address this issue, this study reinterprets the ambiguity of implicit feedback signals as a problem of epistemic uncertainty regarding user preferences and proposes a latent factor model that incorporates this uncertainty within a Bayesian framework.
 
 Specifically, the behavioral vector of a user, which is learned from implicit feedback, is restructured within the embedding space using attention mechanisms applied to the user’s interaction history, forming an implicit preference representation. Similarly, item feature vectors are reinterpreted in the context of the item’s interaction history.
 
