@@ -111,7 +111,7 @@ $$
 - prediction:
 
 $$
-\hat{y}_{u,i}=x_{u,i}
+\hat{y}_{u,i}=\sigma(x_{u,i})
 $$
 
 ### objective function
