@@ -164,6 +164,10 @@ we divided the dataset into a ratio of 8:1:1 and used each for `trn`, `val`, and
 
 additionally, a `leave-one-out` dataset was created to monitor early stopping epoch using performance evaluation metrics(`ndcg`). the reason validation loss was not used as a criterion is because of the perceived discrepancy between the performance evaluation metrics and the loss function.
 
+initially, model performance for early stopping was evaluated on the leave-one-out dataset every five epochs to reduce computational cost. later, the evaluation procedure was refined by replacing repeated sampling and averaging with the expected attention scores, enabling performance validation at every epoch.
+
+the maximum length of a user’s interaction history is about 2,000 items, and the top 10% of users have histories of around 400 items. to improve computational efficiency, each history was truncated up to 400 items according to their TF-IDF scores.
+
 ### result
 
 - pointwise learning (attention score function `concat` is applied)

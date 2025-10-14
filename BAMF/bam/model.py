@@ -40,7 +40,7 @@ class BayesianAttentionModules(nn.Module):
         K: torch.Tensor,                    # (B,H,D)
         V: torch.Tensor,                    # (B,H,D)
         mask: Optional[torch.Tensor]=None,  # (B,H)
-        stochastic: bool=True,
+        sampling: bool=True,
     ):
         # Q: (B,D) -> (B,1,D) -> (B,H,D)
         Q_exp = Q.unsqueeze(1).expand_as(K)
@@ -49,7 +49,7 @@ class BayesianAttentionModules(nn.Module):
         samples, psi, kl = self.sampler(Q_exp, K, mask)
 
         # Masking: (B,H) or (H,) -> (B,H)
-        if stochastic==True:
+        if sampling==True:
             scores = samples.masked_fill(~mask, float('-inf'))
         else:
             scores = psi.masked_fill(~mask, float('-inf'))

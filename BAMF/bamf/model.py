@@ -80,17 +80,17 @@ class Module(nn.Module):
         prob = torch.sigmoid(logit).squeeze(-1)
         return prob
 
-    def score(self, user_idx, item_idx, stochastic):
-        pred_vector, kl = self.gmf(user_idx, item_idx, stochastic)
+    def score(self, user_idx, item_idx, sampling):
+        pred_vector, kl = self.gmf(user_idx, item_idx, sampling)
         logit = self.pred_layer(pred_vector).squeeze(-1)
         return logit, kl
 
-    def gmf(self, user_idx, item_idx, stochastic):
-        user_embed_slice, item_embed_slice, kl = self.rep(user_idx, item_idx, stochastic)
+    def gmf(self, user_idx, item_idx, sampling):
+        user_embed_slice, item_embed_slice, kl = self.rep(user_idx, item_idx, sampling)
         pred_vector = user_embed_slice * item_embed_slice
         return pred_vector, kl
 
-    def rep(self, user_idx, item_idx, stochastic):
+    def rep(self, user_idx, item_idx, sampling):
         # id embedding
         user_embed_slice_id = self.user_embed(user_idx)
         item_embed_slice_id = self.item_embed(item_idx)
@@ -99,7 +99,7 @@ class Module(nn.Module):
         kwargs = dict(
             user_idx=user_idx, 
             item_idx=item_idx, 
-            stochastic=stochastic,
+            sampling=sampling,
         )
         user_embed_slice_hist, kl_u = self.user_hist_embed_generator(**kwargs)
         item_embed_slice_hist, kl_i = self.user_hist_embed_generator(**kwargs)
@@ -110,7 +110,7 @@ class Module(nn.Module):
 
         return user_embed_slice, item_embed_slice, (kl_u + kl_i)/2
 
-    def user_hist_embed_generator(self, user_idx, item_idx, stochastic):
+    def user_hist_embed_generator(self, user_idx, item_idx, sampling):
         kwargs = dict(
             target_hist=self.user_hist, 
             target_idx=user_idx, 
@@ -130,11 +130,11 @@ class Module(nn.Module):
             K=self.item_embed(refer_idx),
             V=self.item_embed(refer_idx),
             mask=mask,
-            stochastic=stochastic,
+            sampling=sampling,
         )
         return self.bam_u(**kwargs)
 
-    def item_hist_embed_generator(self, user_idx, item_idx, mask, stochastic):
+    def item_hist_embed_generator(self, user_idx, item_idx, mask, sampling):
         kwargs = dict(
             target_hist=self.item_hist, 
             target_idx=item_idx, 
@@ -154,7 +154,7 @@ class Module(nn.Module):
             K=self.user_embed(refer_idx),
             V=self.user_embed(refer_idx),
             mask=mask,
-            stochastic=stochastic,
+            sampling=sampling,
         )
         return self.bam_i(**kwargs)
 
