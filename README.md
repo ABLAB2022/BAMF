@@ -111,7 +111,7 @@ $$
 #### objective function
 
 $$
-\mathrm{ELBO}:= -\sum_{(u,i)\in\Omega}{\left(\mathrm{NLL} + \sum_{j \in R_{u}^{+} \setminus \{i\}}{\mathrm{KL}^{(u,j)}} + \sum_{v \in R_{i}^{+} \setminus \{u\}}{\mathrm{KL}^{(v,i)}} \right)}
+\mathcal{L}_{\mathrm{ELBO}}:= \sum_{(u,i)\in\Omega}{\left(\mathrm{NLL} + \sum_{j \in R_{u}^{+} \setminus \{i\}}{\mathrm{KL}^{(u,j)}} + \sum_{v \in R_{i}^{+} \setminus \{u\}}{\mathrm{KL}^{(v,i)}} \right)}
 $$
 
 - apply `bce` to pointwise `nll`:
