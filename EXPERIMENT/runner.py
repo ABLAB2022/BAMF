@@ -2,9 +2,9 @@ from IPython.display import clear_output
 from statistics import mean
 import torch
 import torch.nn as nn
-from DATA_SPLITTER.dataloader.pointwise import CustomizedDataLoader as PointwiseDataLoader
-from DATA_SPLITTER.dataloader.pairwise import CustomizedDataLoader as PairwiseDataLoader
-from DATA_SPLITTER.dataloader.listwise import CustomizedDataLoader as ListwiseDataLoader
+from PIPELINE.dataloader.pointwise import CustomizedDataLoader as PointwiseDataLoader
+from PIPELINE.dataloader.pairwise import CustomizedDataLoader as PairwiseDataLoader
+from PIPELINE.dataloader.listwise import CustomizedDataLoader as ListwiseDataLoader
 from .trainer.pointwise import CustomizedTrainer as PointwiseTrainer
 from .trainer.pairwise import CustomizedTrainer as PairwiseTrainer
 from .trainer.listwise import CustomizedTrainer as ListwiseTrainer

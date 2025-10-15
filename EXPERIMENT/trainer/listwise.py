@@ -6,7 +6,7 @@ import torch.optim as optim
 from torch.amp import GradScaler, autocast
 from ..utils.constants import LOSS_FN_TYPE_LISTWISE
 from ..loss_fn import listwise
-from DATA_SPLITTER.dataloader.listwise import CustomizedDataLoader
+from PIPELINE.dataloader.listwise import CustomizedDataLoader
 
 
 class CustomizedTrainer:
