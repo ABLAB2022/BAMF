@@ -94,9 +94,9 @@ $$
 z_{i}=\mathrm{layernorm}(q_{i} \odot c_{i})
 $$
 
-### agg, matching & predict
+### general matrix factorization
 
-- general matrix factorization:
+- element-wise product (agg & matching):
 
 $$
 z=z_{u} \odot z_{i}
