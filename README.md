@@ -36,7 +36,7 @@ however, we observed that using role-specific embedding matrices yields better p
 
 - $p \in \mathbb{R}^{M \times K}$: user id embedding vector (we define it as global behavior representation)
 - $q \in \mathbb{R}^{N \times K}$: target item id embedding vector (we define it as global behavior representation)
-- $h \in \mathbb{R}^{N \times K}$: history item id embedding vector (we define it as global behavior representation)
+- $h \in \mathbb{R}^{N \times K}$: history item id embedding vector
 - $c_{u} \in \mathbb{R}^{M \times K}$: user context vector (we define it as local preference representation)
 - $c_{i} \in \mathbb{R}^{N \times K}$: item context vector (we define it as local preference representation)
 
