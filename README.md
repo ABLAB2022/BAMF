@@ -56,19 +56,19 @@ however, we observed that using role-specific embedding matrices yields better p
 
 ### user representation
 
-- user id embedding:
+- user global behavior:
 
 $$
 p_{u}=\mathrm{embedding}(u)
 $$
 
-- user-hist. bam:
+- user conditional preference:
 
 $$
 c_{u}=\mathrm{bam}(p_{u}, \forall h_{j}, \forall h_{j})
 $$
 
-- user final representation vector:
+- user refined representation:
 
 $$
 z_{u}=\mathrm{layernorm}(p_{u} \odot c_{u})
@@ -76,19 +76,19 @@ $$
 
 ### item representation
 
-- item id embedding:
+- item global behavior:
 
 $$
 q_{i}=\mathrm{embedding}(i)
 $$
 
-- item-hist. bam:
+- item conditional preference:
 
 $$
 c_{i}=\mathrm{bam}(q_{i}, \forall h_{j}, \forall h_{j})
 $$
 
-- item final representation vector:
+- item refined representation:
 
 $$
 z_{i}=\mathrm{layernorm}(q_{i} \odot c_{i})
