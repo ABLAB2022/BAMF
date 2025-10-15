@@ -28,8 +28,8 @@ however, we observed that using role-specific embedding matrices yields better p
 
 ### idx
 
-- $u$: target user
-- $i$: target item
+- $u=0,1,2,\cdots,M-1$: target user
+- $i=0,1,2,\cdots,N-1$: target item
 - $j \in R_{u}^{+} \setminus \{i\}$: history items of target user (target item $i$ is excluded)
 
 ### vector
@@ -37,8 +37,13 @@ however, we observed that using role-specific embedding matrices yields better p
 - $p \in \mathbb{R}^{M \times K}$: user id embedding vector (we define it as global behavior representation)
 - $q \in \mathbb{R}^{N \times K}$: target item id embedding vector (we define it as global behavior representation)
 - $h \in \mathbb{R}^{N \times K}$: history item id embedding vector
-- $c_{u} \in \mathbb{R}^{M \times K}$: user context vector (we define it as local preference representation)
-- $c_{i} \in \mathbb{R}^{N \times K}$: item context vector (we define it as local preference representation)
+- $c_{u} \in \mathbb{R}^{M \times K}$: user context vector (we define it as conditional preference representation)
+- $c_{i} \in \mathbb{R}^{N \times K}$: item context vector (we define it as conditional preference representation)
+- $z_{u} \in \mathbb{R}^{M \times K}$: user refined representation
+- $z_{i} \in \mathbb{R}^{N \times K}$: item refined representation
+- $z_{u,i}$: $(u,i)$ pair predictive vector
+- $x_{u,i}$: $(u,i)$ pair interaction logit
+- $y_{u,i}, \hat{y}_{u,i}$: $(u,i)$ pair interaction probability
 
 ### function
 
@@ -99,13 +104,13 @@ $$
 - element-wise product (agg & matching):
 
 $$
-z=z_{u} \odot z_{i}
+z_{u,i}=z_{u} \odot z_{i}
 $$
 
 - logit:
 
 $$
-x_{u,i}=h^{T}(Wz+b)
+x_{u,i}=h^{T}(W \cdot z_{u,i}+b)
 $$
 
 - prediction:
