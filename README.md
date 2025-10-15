@@ -136,13 +136,13 @@ $$
 
 we use `prod` and `concat` as attention score functions, proposed by "NAIS: Neural attentive item similarity model for recommendation (He et al., 2018)".
 
-- `prod` function:
+- `concat` function:
 
 $$
 f(q,k)=h \cdot \mathrm{ReLU}(W \cdot [p \oplus q] + b)
 $$
 
-- `concat` function:
+- `prod` function:
 
 $$
 f(q,k)=h \cdot \mathrm{ReLU}(W \cdot [p \odot q] + b)
@@ -168,7 +168,7 @@ initially, model performance for early stopping was evaluated on the leave-one-o
 
 the maximum length of a user’s interaction history is about 2,000 items, and the top 10% of users have histories of around 400 items. to improve computational efficiency, each history was truncated up to 400 items according to their TF-IDF scores.
 
-experiment result is:
+experimental result is:
 
 - pointwise learning (attention score function `concat` is applied) [`notebook`](/_notebooks/pointwise/BAMF_lognormal_concat_movielens.ipynb)
 
@@ -177,3 +177,5 @@ experiment result is:
 - pairwise learning (attention score function `concat` is applied) [`notebook`](/_notebooks/pairwise/BAMF_lognormal_concat_movielens.ipynb)
 
 - pairwise learning (attention score function `prod` is applied) [`notebook`](/_notebooks/pairwise/BAMF_lognormal_prod_movielens.ipynb)
+
+the above experimental results were obtained using only the log-normal dist. as the prob. dist. for the attention scores, with the standard deviation $\sigma$ of the prior dist. fixed at 1.0 and that of the variational dist. fixed at 0.1. performance improvements may be achieved by tuning the choice of prob. dist. and the $\sigma$ depending on the dataset.
