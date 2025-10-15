@@ -16,7 +16,6 @@ class Module(nn.Module):
         n_items: int,
         n_factors: int,
         user_hist: torch.Tensor,
-        item_hist: torch.Tensor,
         hyper_approx: float=0.1,
         hyper_prior: float=1.0,
         tau: float=4.0,
@@ -51,10 +50,6 @@ class Module(nn.Module):
             name="user_hist", 
             tensor=user_hist,
         )
-        self.register_buffer(
-            name="item_hist", 
-            tensor=item_hist,
-        )
 
         # generate layers
         self._set_up_components()
@@ -86,31 +81,31 @@ class Module(nn.Module):
         return logit, kl
 
     def gmf(self, user_idx, item_idx, sampling):
-        user_embed_slice, item_embed_slice, kl = self.rep(user_idx, item_idx, sampling)
-        pred_vector = user_embed_slice * item_embed_slice
+        user_refined, item_refined, kl = self.rep(user_idx, item_idx, sampling)
+        pred_vector = user_refined * item_refined
         return pred_vector, kl
 
     def rep(self, user_idx, item_idx, sampling):
-        # id embedding
-        user_embed_slice_id = self.user_embed(user_idx)
-        item_embed_slice_id = self.item_embed(item_idx)
-        
-        # history embedding
+        # global behavior
+        user_embed_slice = self.user_embed(user_idx)
+        item_embed_slice = self.item_embed(item_idx)
+
+        # conditional preference
         kwargs = dict(
             user_idx=user_idx, 
             item_idx=item_idx, 
             sampling=sampling,
         )
-        user_embed_slice_hist, kl_u = self.user_hist_embed_generator(**kwargs)
-        item_embed_slice_hist, kl_i = self.user_hist_embed_generator(**kwargs)
+        context_u, context_i, kl = self.conditional_pref_generator(**kwargs)
 
-        # element-wise product & layernorm
-        user_embed_slice = self.norm_u(user_embed_slice_hist * user_embed_slice_id)
-        item_embed_slice = self.norm_i(item_embed_slice_hist * item_embed_slice_id)
+        # refine: element-wise product & layernorm
+        user_refined = self.norm_u(user_embed_slice * context_u)
+        item_refined = self.norm_i(item_embed_slice * context_i)
 
-        return user_embed_slice, item_embed_slice, (kl_u + kl_i)/2
+        return user_refined, item_refined, kl
 
-    def user_hist_embed_generator(self, user_idx, item_idx, sampling):
+    def conditional_pref_generator(self, user_idx, item_idx, sampling):
+        # hist. idx
         kwargs = dict(
             target_hist=self.user_hist, 
             target_idx=user_idx, 
@@ -118,45 +113,33 @@ class Module(nn.Module):
         )
         refer_idx = self._hist_idx_slicer(**kwargs)
 
+        # mask
         kwargs = dict(
             hist_idx_slice=refer_idx,
             counterpart_idx=item_idx, 
             counterpart_padding_idx=self.n_items,
         )
         mask = self._mask_generator(**kwargs)
-        
+
         kwargs = dict(
             Q=self.user_embed(user_idx),
-            K=self.item_embed(refer_idx),
-            V=self.item_embed(refer_idx),
+            K=self.hist_embed(refer_idx),
+            V=self.hist_embed(refer_idx),
             mask=mask,
             sampling=sampling,
         )
-        return self.bam_u(**kwargs)
+        context_u, kl_u = self.bam_u(**kwargs)
 
-    def item_hist_embed_generator(self, user_idx, item_idx, mask, sampling):
-        kwargs = dict(
-            target_hist=self.item_hist, 
-            target_idx=item_idx, 
-            counterpart_padding_idx=self.n_users,
-        )
-        refer_idx = self._hist_idx_slicer(**kwargs)
-
-        kwargs = dict(
-            hist_idx_slice=refer_idx,
-            counterpart_idx=user_idx, 
-            counterpart_padding_idx=self.n_users,
-        )
-        mask = self._mask_generator(**kwargs)
-        
         kwargs = dict(
             Q=self.item_embed(item_idx),
-            K=self.user_embed(refer_idx),
-            V=self.user_embed(refer_idx),
+            K=self.hist_embed(refer_idx),
+            V=self.hist_embed(refer_idx),
             mask=mask,
             sampling=sampling,
         )
-        return self.bam_i(**kwargs)
+        context_i, kl_i = self.bam_i(**kwargs)
+
+        return context_u, context_i, (kl_u + kl_i)/2
 
     def _mask_generator(self, hist_idx_slice, counterpart_idx, counterpart_padding_idx):
         # mask to current target item from history
@@ -198,20 +181,25 @@ class Module(nn.Module):
         self.bam_i = BayesianAttentionModules(**kwargs)
 
     def _create_embeddings(self):
-        self.user_embed = nn.Embedding(
+        kwargs = dict(
             num_embeddings=self.n_users+1, 
             embedding_dim=self.n_factors,
             padding_idx=self.n_users,
         )
-        self.item_embed = nn.Embedding(
+        self.user_embed = nn.Embedding(**kwargs)
+
+        kwargs = dict(
             num_embeddings=self.n_items+1, 
             embedding_dim=self.n_factors,
-            padding_idx=self.n_items,
+            padding_idx=self.n_items, 
         )
+        self.item_embed = nn.Embedding(**kwargs)
+        self.hist_embed = nn.Embedding(**kwargs)
 
     def _init_embeddings(self):
         nn.init.normal_(self.user_embed.weight, std=0.01)
         nn.init.normal_(self.item_embed.weight, std=0.01)
+        nn.init.normal_(self.hist_embed.weight, std=0.01)
 
     def _create_layers(self):
         self.norm_u = nn.LayerNorm(self.n_factors)

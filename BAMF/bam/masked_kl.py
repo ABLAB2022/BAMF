@@ -9,8 +9,8 @@ def kl_weibull_gamma(
     prior: Gamma,
 ):
     """
-    Analytic KL divergence: KL(Weibull(k, λ) || Gamma(α, β))
-    Reference: Fan et al., "Bayesian Attention Modules", NeurIPS 2020.
+    - Analytic KL divergence: KL(Weibull(k, λ) || Gamma(α, β))
+    - Reference: Fan et al., "Bayesian Attention Modules", NeurIPS 2020.
     """
     k, lam = approx.concentration, approx.scale
     alpha, beta = prior.concentration, prior.rate
@@ -28,8 +28,8 @@ def kl_weibull_gamma(
     return kl
 
 def masked_kl_fn(
-    approx: torch.distributions, 
-    prior: torch.distributions, 
+    approx: torch.distributions.Distribution, 
+    prior: torch.distributions.Distribution, 
     mask: torch.Tensor,
 ):
     # compute kl divergence

@@ -96,6 +96,7 @@ class Runner:
                 loo_loader=loo_loader,
                 epoch=epoch,
                 n_epochs=n_epochs,
+                warm_up=warm_up,
                 interval=interval,
             )
             loo_score = self._run_monitor(**kwargs)
@@ -109,7 +110,7 @@ class Runner:
             computing_cost_list.extend(computing_cost)
 
             # early stopping
-            if ((epoch+1) > warm_up) and (self.monitor.get_should_stop==True):
+            if self.monitor.should_stop==True:
                 break
 
             # log reset
@@ -153,7 +154,7 @@ class Runner:
 
         return (trn_nll, trn_kl), (val_nll, val_kl), computing_cost
 
-    def _run_monitor(self, loo_loader, epoch, n_epochs, interval):
+    def _run_monitor(self, loo_loader, epoch, n_epochs, warm_up, interval):
         if (epoch+1) % interval==0:
             kwargs = dict(
                 loo_loader=loo_loader, 
@@ -161,6 +162,9 @@ class Runner:
                 n_epochs=n_epochs,
             )
             loo_score = self.monitor(**kwargs)
+
+            if (epoch+1) <= warm_up:
+                self.monitor.set_counter = 0
 
             print(
                 f"CURRENT SCORE: {loo_score:.4f}",

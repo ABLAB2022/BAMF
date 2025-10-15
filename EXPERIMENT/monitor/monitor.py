@@ -103,8 +103,20 @@ class EarlyStoppingMonitor:
         return score
 
     @property
-    def get_should_stop(self):
-        return self.stopper.get_should_stop
+    def should_stop(self):
+        return self.stopper.should_stop
+
+    @should_stop.setter
+    def should_stop(self, value):
+        self.stopper.should_stop = value
+
+    @property
+    def get_counter(self):
+        return self.stopper.get_counter
+    
+    @get_counter.setter
+    def set_counter(self, value):
+        self.stopper.set_counter = value
 
     @property
     def get_best_epoch(self):
