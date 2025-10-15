@@ -2,9 +2,9 @@
 
 - Conference: 2024.11.1.
 
-- First Author: [Wang,J.](https://github.com/jayarnim)
+- First Author: [`Wang,J.`](https://github.com/jayarnim)
 
-- Corresponding Author: [Lee,J.](https://github.com/jaylee07)
+- Corresponding Author: [`Lee,J.`](https://github.com/jaylee07)
 
 ## idea
 
