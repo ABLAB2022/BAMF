@@ -16,7 +16,7 @@ This study replaces the deterministic attention scores with stochastic attention
 
 ## architecture
 
-the original BACF model uses a single item embedding matrix and applies separate linear transformations depending on the role (target or history):
+the original BAMF model uses a single item embedding matrix and applies separate linear transformations depending on the role (target or history):
 
 ![01](/desc/origin.png)
 
