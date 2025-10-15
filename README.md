@@ -163,7 +163,7 @@ $$
 
 to measure the performance of the proposed model, we used the following dataset:
 
-- movielens latest small [`link`](https://grouplens.org/datasets/movielens/latest/)
+- movielens latest small (2018) [`link`](https://grouplens.org/datasets/movielens/latest/)
 
 we divided the dataset into a ratio of 8:1:1 and used each for `trn`, `val`, and `tst`. negative sampling ratio @ `trn`, `val` is 1:4 (pointwise), 1:1 (pairwise). negative sampling ratio @ `tst` is 1:99.
 
