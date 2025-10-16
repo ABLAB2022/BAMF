@@ -4,22 +4,22 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.amp import GradScaler, autocast
-from ..utils.constants import LOSS_FN_TYPE_POINTWISE
-from ..loss_fn import pointwise
-from PIPELINE.dataloader.pointwise import CustomizedDataLoader
+from ..utils.constants import LOSS_FN_TYPE_LISTWISE
+from ..loss_fn import listwise
+from ...PIPELINE.dataloader.listwise import CustomizedDataLoader
 
 
 class CustomizedTrainer:
     def __init__(
         self,
         model: nn.Module,
-        loss_fn_type: LOSS_FN_TYPE_POINTWISE="bce",
+        loss_fn_type: LOSS_FN_TYPE_LISTWISE="climf",
         lr: float=1e-4, 
         weight_decay: float=1e-3, 
         kl_lambda: float=0.5,
     ):
         """
-        Pointwise Learning Single Epoch Trainer for Latent Factor Model
+        Listwise Learning Single Epoch Trainer for Latent Factor Model
         -----
         created by @jayarnim
 
@@ -27,7 +27,7 @@ class CustomizedTrainer:
             model (nn.Module):
                 latent factor model instance.
             loss_fn_type (str):
-                pointwise loss functions currently supported are: `bce`.
+                listwise loss functions currently supported are: `climf`.
             lr (float):
                 learning rate of optimizer `adam`.
             weight_decay (float):
@@ -92,12 +92,12 @@ class CustomizedTrainer:
             desc=f"Epoch {epoch+1}/{n_epochs} TRN"
         )
 
-        for user_idx, item_idx, label in iter_obj:
+        for user_idx, pos_idx, neg_idx in iter_obj:
             # to gpu
             kwargs = dict(
                 user_idx=user_idx.to(self.device),
-                item_idx=item_idx.to(self.device), 
-                label=label.to(self.device),
+                pos_idx=pos_idx.to(self.device), 
+                neg_idx=neg_idx.to(self.device),
             )
 
             # set starting time for computing cost
@@ -138,12 +138,12 @@ class CustomizedTrainer:
             desc=f"Epoch {epoch+1}/{n_epochs} VAL"
         )
 
-        for user_idx, item_idx, label in iter_obj:
+        for user_idx, pos_idx, neg_idx in iter_obj:
             # to gpu
             kwargs = dict(
                 user_idx=user_idx.to(self.device),
-                item_idx=item_idx.to(self.device), 
-                label=label.to(self.device),
+                pos_idx=pos_idx.to(self.device), 
+                neg_idx=neg_idx.to(self.device),
             )
 
             # forward pass
@@ -156,10 +156,16 @@ class CustomizedTrainer:
 
         return epoch_nll / len(dataloader), epoch_kl / len(dataloader)
 
-    def _batch_step(self, user_idx, item_idx, label):
-        logit, kl = self.model(user_idx, item_idx)
-        nll = self.loss_fn(logit, label)
-        return nll, kl
+    def _batch_step(self, user_idx, pos_idx, neg_idx):
+        pos_logit, kl_pos = self.model(user_idx, pos_idx)
+        
+        user_idx_exp = user_idx.unsqueeze(1).expand_as(neg_idx)
+        neg_logit_flat, kl_neg = self.model(user_idx_exp.reshape(-1), neg_idx.reshape(-1))
+        neg_logit = neg_logit_flat.view(*neg_idx.shape)
+        
+        loss = self.loss_fn(pos_logit, neg_logit)
+        
+        return loss, (kl_pos + kl_neg)/2
 
     def _run_fn_opt(self, loss):
         self.optimizer.zero_grad()
@@ -173,8 +179,8 @@ class CustomizedTrainer:
         self._init_scaler()
 
     def _init_loss_fn(self):
-        if self.loss_fn_type=="bce":
-            self.loss_fn = pointwise.bce
+        if self.loss_fn_type=="climf":
+            self.loss_fn = listwise.climf
         else:
             raise ValueError(f"Invalid loss_fn_type: {self.loss_fn_type}")
 

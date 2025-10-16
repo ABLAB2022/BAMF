@@ -4,22 +4,22 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.amp import GradScaler, autocast
-from ..utils.constants import LOSS_FN_TYPE_LISTWISE
-from ..loss_fn import listwise
-from PIPELINE.dataloader.listwise import CustomizedDataLoader
+from ..utils.constants import LOSS_FN_TYPE_PAIRWISE
+from ..loss_fn import pairwise
+from ...PIPELINE.dataloader.pairwise import CustomizedDataLoader
 
 
 class CustomizedTrainer:
     def __init__(
         self,
         model: nn.Module,
-        loss_fn_type: LOSS_FN_TYPE_LISTWISE="climf",
+        loss_fn_type: LOSS_FN_TYPE_PAIRWISE="bpr",
         lr: float=1e-4, 
         weight_decay: float=1e-3, 
         kl_lambda: float=0.5,
     ):
         """
-        Listwise Learning Single Epoch Trainer for Latent Factor Model
+        Pairwise Learning Single Epoch Trainer for Latent Factor Model
         -----
         created by @jayarnim
 
@@ -27,7 +27,7 @@ class CustomizedTrainer:
             model (nn.Module):
                 latent factor model instance.
             loss_fn_type (str):
-                listwise loss functions currently supported are: `climf`.
+                pairwise loss functions currently supported are: `bpr`.
             lr (float):
                 learning rate of optimizer `adam`.
             weight_decay (float):
@@ -158,13 +158,8 @@ class CustomizedTrainer:
 
     def _batch_step(self, user_idx, pos_idx, neg_idx):
         pos_logit, kl_pos = self.model(user_idx, pos_idx)
-        
-        user_idx_exp = user_idx.unsqueeze(1).expand_as(neg_idx)
-        neg_logit_flat, kl_neg = self.model(user_idx_exp.reshape(-1), neg_idx.reshape(-1))
-        neg_logit = neg_logit_flat.view(*neg_idx.shape)
-        
+        neg_logit, kl_neg = self.model(user_idx, neg_idx)
         loss = self.loss_fn(pos_logit, neg_logit)
-        
         return loss, (kl_pos + kl_neg)/2
 
     def _run_fn_opt(self, loss):
@@ -179,8 +174,8 @@ class CustomizedTrainer:
         self._init_scaler()
 
     def _init_loss_fn(self):
-        if self.loss_fn_type=="climf":
-            self.loss_fn = listwise.climf
+        if self.loss_fn_type=="bpr":
+            self.loss_fn = pairwise.bpr
         else:
             raise ValueError(f"Invalid loss_fn_type: {self.loss_fn_type}")
 
